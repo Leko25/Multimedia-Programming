@@ -7,9 +7,8 @@ import javax.swing.*;
 
 public class ImageDisplay {
 
-	JFrame frame;
-	JLabel lbIm1;
 	BufferedImage imgOne;
+	ImageDisplayUtility util = new ImageDisplayUtility();
 	int width = 512;
 	int height = 512;
 	private static double INTERPOLATION_DIFF = 0.005;
@@ -60,28 +59,6 @@ public class ImageDisplay {
 		}
 	}
 
-
-	/**
-	 * @param s : hexadecimal string
-	 * @return Returns the corresponding pixel value
-	 */
-	private static int hex2Decimal(String s) {
-		String digits = "0123456789ABCDEF";
-		s = s.toUpperCase();
-		int val = 0;
-		for (int i = 0; i < s.length(); i++) {
-			char c = s.charAt(i);
-			int d = digits.indexOf(c);
-			val = 16*val + d;
-		}
-		return val;
-	}
-
-//	private int interpolation(BufferedImage prevImage,
-//							  double diagWidth, double diagHeight) {
-//
-//	}
-
 	/**
 	 *
 	 * @param prevImg : Previous BufferedImage Object prior to this operation
@@ -104,6 +81,31 @@ public class ImageDisplay {
 		return nextImg;
 	}
 
+	private BufferedImage scaleImageAnimate(BufferedImage prevImg, double scaleFactor) {
+		int Width = prevImg.getWidth();
+		int Height = prevImg.getHeight();
+		double origin = Width/2.0;
+		BufferedImage newImg = new BufferedImage(Width, Height, prevImg.getType());
+
+		for (int y = 0; y < Height; y++) {
+			for (int x = 0; x < Width; x++) {
+				double x_origin = x - origin;
+				double y_origin = y - origin;
+				double x_transformed = x_origin * scaleFactor;
+				double y_transformed = y_origin * scaleFactor;
+				int x_new = (int) (x_transformed + origin);
+				int y_new = (int) (y_transformed + origin);
+
+				if (x_new < 0 || y_new < 0 || x_new >= 724 || y_new >= 724) {
+					newImg.setRGB(x, y, util.hex2Decimal("D0D0D0"));
+				} else {
+					newImg.setRGB(x, y, prevImg.getRGB(x_new, y_new));
+				}
+			}
+		}
+		return newImg;
+	}
+
 	/**
 	 *
 	 * @param prevImage : Previous BufferedImage Object prior to this operation
@@ -112,17 +114,15 @@ public class ImageDisplay {
 	 */
 	private BufferedImage rotateImage(BufferedImage prevImage, double rotation){
 		rotation = -Math.toRadians(rotation);
-		if (rotation == 0){
+		if (rotation == 0.0){
 			return prevImage;
 		}
 
 		//define image properties
 		int imgWidth = prevImage.getWidth();
 		int imgHeight = prevImage.getHeight();
-//		int diagWidth = (int) (Math.sqrt(2) * imgWidth);
-//		int diagHeight = (int) (Math.sqrt(2) * imgHeight);
-		int diagWidth = 724; //TODO -- rotation is off fix
-		int diagHeight = 724;
+		int diagWidth = (int) (Math.sqrt(2) * imgWidth);
+		int diagHeight = (int) (Math.sqrt(2) * imgHeight);
 		double origin = imgWidth/2.0;
 		double diagOrigin = diagWidth/2.0;
 
@@ -140,7 +140,7 @@ public class ImageDisplay {
 				int x_new = (int) (x_transformed + origin);
 				int y_new = (int) (y_transformed + origin);
 				if (x_new < 0 || y_new < 0 || x_new >= imgWidth || y_new >= imgHeight) {
-					rotatedImg.setRGB(x, y, hex2Decimal("D0D0D0"));
+					rotatedImg.setRGB(x, y, util.hex2Decimal("D0D0D0"));
 				}
 				else {
 					rotatedImg.setRGB(x, y, prevImage.getRGB(x_new, y_new));
@@ -159,20 +159,19 @@ public class ImageDisplay {
 		if (aliasFlag == 1){
 			int padding = (int) ((FILTER_WINDOW_SIZE - 1)/2);
 			if (prevImage.getWidth() % FILTER_WINDOW_SIZE != 0) {
-				prevImage = addPadding(prevImage); //pad Image
+				prevImage = util.addPadding(prevImage); //pad Image
 				padding = 0;
 			}
 			int prevWidth = prevImage.getWidth();
 			int prevHeight = prevImage.getHeight();
 			BufferedImage filteredImage = new BufferedImage(prevWidth, prevHeight, BufferedImage.TYPE_INT_RGB);
-			int stop = getStop(prevWidth, prevHeight, padding);
+			int stop = util.getStop(prevWidth, prevHeight, padding);
 			for (int y = 0; y < stop; y++) {
 				for (int x = 0; x < stop; x++) {
 					int r = 0, g = 0, b = 0;
-					for (int i = 0; i < FILTER_WINDOW_SIZE; i++) {
-						for (int j = 0; j < FILTER_WINDOW_SIZE; j++) {
+					for (int i = 0; i < util.FILTER_WINDOW_SIZE; i++) {
+						for (int j = 0; j < util.FILTER_WINDOW_SIZE; j++) {
 							if (x + i < stop - 1  && y + j<= stop - 1){
-//								System.out.println((x + i) + ", " + (y + j));
 								r += (prevImage.getRGB(x + i, y + j) >> 16) & 0x000000ff;
 								g += (prevImage.getRGB(x + i, y + j) >> 8) & 0x000000ff;
 								b += (prevImage.getRGB(x + i, y + j)) & 0x000000ff;
@@ -192,143 +191,25 @@ public class ImageDisplay {
 	}
 
 	/**
-	 * @param width : image width
-	 * @param height : image height
-	 * @return stopping parameter for loop
-	 */
-	private int getStop(int width, int height, int padding){
-		if (padding == 0) {
-			return width;
-		}
-		int i = 0;
-		for (i = width - padding; i < width; i++){
-			if (i % FILTER_WINDOW_SIZE == 0){
-				break;
-			}
-		}
-		return i;
-	}
-
-	/**
+	 * Simultaneously Scale and Rotate the image according for frame[i] in numFrames
 	 * @param prevImage : Previous BufferedImage Object prior to this operation
-	 *@return Padded Image
+	 * @param numFrames : frames per second * transition (secs)
+	 * @param rotation : Total angle of rotation
+	 * @param scaleFactor : scaling factor
+	 * @param aliasFlag : If true then low-pass filter is applied to the image
+	 * @return an array of Buffered ImageFrames
 	 */
-	private BufferedImage addPadding(BufferedImage prevImage) {
-		int padding = (int) ((FILTER_WINDOW_SIZE - 1)/2);
-		int padWidth = prevImage.getWidth() + (padding * 2);
-		int padHeight = prevImage.getHeight() + (padding * 2);
-		BufferedImage paddedImage = new BufferedImage(padWidth, padHeight, BufferedImage.TYPE_INT_RGB);
-
-		//Fill Center of the Image
-		for (int x = padding; x < padWidth - padding; x++) {
-			for (int y = padding; y < padHeight - padding; y++) {
-				paddedImage.setRGB(x, y, prevImage.getRGB(x - padding, y - padding));
-			}
-		}
-
-		//Pad the left-Boundary
-		for (int y = 0; y < padding; y++) {
-			for (int x = padding; x < padWidth - padding; x++) {
-				paddedImage.setRGB(x, y, prevImage.getRGB(x - padding, y));
-			}
-		}
-
-		//Pad the right-Boundary
-		for (int y = padHeight - 1; y >= padHeight - padding; y--) {
-			for (int x = padding; x < padWidth - padding; x++) {
-				paddedImage.setRGB(x, y, prevImage.getRGB(x - padding, y - padding - 1));
-			}
-		}
-
-		//Pad corners
-		int prevWidth = prevImage.getWidth();
-		int prevHeight = prevImage.getHeight();
-		for (int x = 0; x < padding; x++) {
-			for (int y = 0; y < padding; y++) {
-				paddedImage.setRGB(
-						x,
-						y,
-						prevImage.getRGB(0, 0));
-				paddedImage.setRGB(x,
-						y + prevWidth + padding,
-						prevImage.getRGB(0, prevWidth - 1));
-				paddedImage.setRGB(
-						x + prevHeight + padding,
-						y,
-						prevImage.getRGB(prevHeight - 1, 0));
-				paddedImage.setRGB(
-						x + prevHeight + padding,
-						y + prevWidth + padding,
-						prevImage.getRGB(prevHeight - 1, prevWidth - 1)
-				);
-			}
-		}
-		return paddedImage;
-	}
-
-
 	private BufferedImage[] animate(BufferedImage prevImage, int numFrames, double rotation, double scaleFactor, int aliasFlag) {
 		BufferedImage[] imageFrames = new BufferedImage[numFrames];
 
-		// Anitaliasing
 		prevImage = aliasFlag == 1 ? antiAlias(prevImage, 1) : prevImage;
 		scaleFactor = 1/scaleFactor;
 
-		// TODO -- Animation is off fix
-		if (scaleFactor == 1.0) {
-			for (int i = 0; i < numFrames; i++) {
-				double tmpRot = (i * rotation)/((double) (numFrames - 1));
-				prevImage = rotateImage(prevImage, tmpRot);
-				imageFrames[i] = prevImage;
-			}
+		for (int i = 0; i < numFrames; i++) {
+			imageFrames[i] = scaleImageAnimate(rotateImage(prevImage,(double) (i * rotation)/ ((double) (numFrames-1))),scaleFactor*(i+1)/numFrames);
 		}
 		return imageFrames;
 	}
-
-	private void showImsHelper(BufferedImage prevImage) {
-		// Use label to display the image
-		frame = new JFrame();
-		GridBagLayout gLayout = new GridBagLayout();
-		frame.getContentPane().setLayout(gLayout);
-
-		lbIm1 = new JLabel(new ImageIcon(imgOne));
-
-		GridBagConstraints c = new GridBagConstraints();
-		c.fill = GridBagConstraints.HORIZONTAL;
-		c.anchor = GridBagConstraints.CENTER;
-		c.weightx = 0.5;
-		c.gridx = 0;
-		c.gridy = 0;
-
-		c.fill = GridBagConstraints.HORIZONTAL;
-		c.gridx = 0;
-		c.gridy = 1;
-		frame.getContentPane().add(lbIm1, c);
-
-		frame.pack();
-		frame.setVisible(true);
-	}
-
-	private void showAnimationHelper(JFrame animationFrame, BufferedImage prevImage){
-		JLabel lbIm2 = new JLabel(new ImageIcon(prevImage));
-
-		GridBagConstraints c = new GridBagConstraints();
-		c.fill = GridBagConstraints.HORIZONTAL;
-		c.anchor = GridBagConstraints.CENTER;
-		c.weightx = 0.5;
-		c.gridx = 0;
-		c.gridy = 0;
-
-		c.fill = GridBagConstraints.HORIZONTAL;
-		c.gridx = 0;
-		c.gridy = 1;
-		animationFrame.getContentPane().removeAll();
-		animationFrame.getContentPane().add(lbIm2, c);
-
-		animationFrame.pack();
-		animationFrame.setVisible(true);
-	}
-
 
 	public void showIms(String[] args) {
 		// Read in the specified image
@@ -346,19 +227,19 @@ public class ImageDisplay {
 			imgOne = antiAlias(imgOne, aliasFlag);
 			imgOne = scaleImage(imgOne, scaleFactor);
 			imgOne = rotateImage(imgOne, rotation);
-			showImsHelper(imgOne);
+			util.showImsHelper(imgOne);
 		} else {
 			int numFrames = fps * transition;
 			BufferedImage[] imageFrames = animate(imgOne, numFrames, rotation, scaleFactor, aliasFlag);
 
 			//Display animation
 			JFrame animationFrame = new JFrame();
-			GridBagLayout gLayout = new GridBagLayout();
-			animationFrame.getContentPane().setLayout(gLayout);
+			animationFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+			JLabel lbIm2 = new JLabel();
 			for (int i = 0; i < numFrames; i++) {
-				showAnimationHelper(animationFrame, imageFrames[i]);
+				util.showAnimationHelper(animationFrame, lbIm2, imageFrames[i]);
 				try{
-					Thread.sleep((int) (1500.00/fps));
+					Thread.sleep((int) (500.00/fps));
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
@@ -366,6 +247,7 @@ public class ImageDisplay {
 		}
 	}
 
+	/////////////       MAIN
 	public static void main(String[] args) {
 		ImageDisplay ren = new ImageDisplay();
 		ren.showIms(args);
