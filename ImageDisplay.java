@@ -81,31 +81,6 @@ public class ImageDisplay {
 		return nextImg;
 	}
 
-	private BufferedImage scaleImageAnimate(BufferedImage prevImg, double scaleFactor) {
-		int Width = prevImg.getWidth();
-		int Height = prevImg.getHeight();
-		double origin = Width/2.0;
-		BufferedImage newImg = new BufferedImage(Width, Height, prevImg.getType());
-
-		for (int y = 0; y < Height; y++) {
-			for (int x = 0; x < Width; x++) {
-				double x_origin = x - origin;
-				double y_origin = y - origin;
-				double x_transformed = x_origin * scaleFactor;
-				double y_transformed = y_origin * scaleFactor;
-				int x_new = (int) (x_transformed + origin);
-				int y_new = (int) (y_transformed + origin);
-
-				if (x_new < 0 || y_new < 0 || x_new >= 724 || y_new >= 724) {
-					newImg.setRGB(x, y, util.hex2Decimal("D0D0D0"));
-				} else {
-					newImg.setRGB(x, y, prevImg.getRGB(x_new, y_new));
-				}
-			}
-		}
-		return newImg;
-	}
-
 	/**
 	 *
 	 * @param prevImage : Previous BufferedImage Object prior to this operation
@@ -206,7 +181,9 @@ public class ImageDisplay {
 		scaleFactor = 1/scaleFactor;
 
 		for (int i = 0; i < numFrames; i++) {
-			imageFrames[i] = scaleImageAnimate(rotateImage(prevImage,(double) (i * rotation)/ ((double) (numFrames-1))),scaleFactor*(i+1)/numFrames);
+			double val = (double) (i * 1.2)/ ((double) (numFrames - 1));
+			val = val == 0.0 ? (val + 0.01) : val;
+			imageFrames[i] = scaleImage(rotateImage(prevImage,(double) (i * rotation)/ ((double) (numFrames-1))),val);
 		}
 		return imageFrames;
 	}
