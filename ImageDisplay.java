@@ -144,8 +144,8 @@ public class ImageDisplay {
 			for (int y = 0; y < stop; y++) {
 				for (int x = 0; x < stop; x++) {
 					int r = 0, g = 0, b = 0;
-					for (int i = 0; i < util.FILTER_WINDOW_SIZE; i++) {
-						for (int j = 0; j < util.FILTER_WINDOW_SIZE; j++) {
+					for (int i = 0; i < FILTER_WINDOW_SIZE; i++) {
+						for (int j = 0; j < FILTER_WINDOW_SIZE; j++) {
 							if (x + i < stop - 1  && y + j<= stop - 1){
 								r += (prevImage.getRGB(x + i, y + j) >> 16) & 0x000000ff;
 								g += (prevImage.getRGB(x + i, y + j) >> 8) & 0x000000ff;
@@ -183,8 +183,10 @@ public class ImageDisplay {
 			double scale_i = (double) (i * scaleFactor)/ ((double) (numFrames - 1));
 			double angle_i = (double) (i * rotation)/ ((double) (numFrames-1));
 			scale_i = scale_i == 0.0 ? (scale_i + 0.01) : scale_i;
-			imageFrames[i] = rotateImage(scaleImageAnimate(prevImage,scale_i), angle_i);
+			System.out.println("Generating Frame..." + i);
+			imageFrames[i] = rotateImage(scaleImageAnimate(prevImage,scale_i), Math.round(angle_i));
 		}
+		System.out.println("Generation complete!");
 		return imageFrames;
 	}
 
@@ -216,7 +218,7 @@ public class ImageDisplay {
 			for (int i = 0; i < numFrames; i++) {
 				util.showAnimationHelper(animationFrame, lbIm2, imageFrames[i]);
 				try{
-					Thread.sleep((int) (1000.00/fps));
+					Thread.sleep((int) (500.00/fps));
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
