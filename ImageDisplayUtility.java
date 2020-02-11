@@ -129,11 +129,31 @@ public class ImageDisplayUtility {
         System.out.println(frame.getWidth());
     }
 
-    public void showAnimationHelper(JFrame animationFrame, JLabel lbIm2, BufferedImage prevImage){
+//    public void showAnimationHelper(JFrame animationFrame, JLabel lbIm2, BufferedImage prevImage){
+//        lbIm2.setIcon(new ImageIcon(prevImage));
+//        animationFrame.getContentPane().removeAll();
+//        animationFrame.getContentPane().add(lbIm2, BorderLayout.CENTER);
+//        animationFrame.setLocation(200, 0);
+//        animationFrame.pack();
+//        animationFrame.setVisible(true);
+//    }
+
+    public void showAnimationHelper(JFrame animationFrame, JLabel lbIm2, BufferedImage prevImage) {
         lbIm2.setIcon(new ImageIcon(prevImage));
         animationFrame.getContentPane().removeAll();
-        animationFrame.getContentPane().add(lbIm2, BorderLayout.CENTER);
-        animationFrame.setLocation(200, 0);
+        GridBagLayout gLayout = new GridBagLayout();
+        animationFrame.getContentPane().setLayout(gLayout);
+        GridBagConstraints c = new GridBagConstraints();
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.CENTER;
+        c.weightx = 0.5;
+        c.gridx = 0;
+        c.gridy = 0;
+
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0;
+        c.gridy = 1;
+        animationFrame.getContentPane().add(lbIm2, c);
         animationFrame.pack();
         animationFrame.setVisible(true);
     }
