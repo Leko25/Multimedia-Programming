@@ -129,15 +129,6 @@ public class ImageDisplayUtility {
         System.out.println(frame.getWidth());
     }
 
-//    public void showAnimationHelper(JFrame animationFrame, JLabel lbIm2, BufferedImage prevImage){
-//        lbIm2.setIcon(new ImageIcon(prevImage));
-//        animationFrame.getContentPane().removeAll();
-//        animationFrame.getContentPane().add(lbIm2, BorderLayout.CENTER);
-//        animationFrame.setLocation(200, 0);
-//        animationFrame.pack();
-//        animationFrame.setVisible(true);
-//    }
-
     public void showAnimationHelper(JFrame animationFrame, JLabel lbIm2, BufferedImage prevImage) {
         lbIm2.setIcon(new ImageIcon(prevImage));
         animationFrame.getContentPane().removeAll();
