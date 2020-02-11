@@ -11,7 +11,6 @@ public class ImageDisplay {
 	ImageDisplayUtility util = new ImageDisplayUtility();
 	int width = 512;
 	int height = 512;
-	private static double INTERPOLATION_DIFF = 0.005;
 	public static int FILTER_WINDOW_SIZE = 3;
 
 	/** Read Image RGB
@@ -59,26 +58,29 @@ public class ImageDisplay {
 		}
 	}
 
-	/**
-	 *
-	 * @param prevImg : Previous BufferedImage Object prior to this operation
-	 * @param scaleFactor : scaling argument
-	 * @return new BufferedImage that has been scale according to args[1]
-	 */
-	private BufferedImage scaleImage(BufferedImage prevImg, double scaleFactor) {
-		int scaledWidth = (int) (prevImg.getWidth() * scaleFactor);
-		int scaledHeight = (int) (prevImg.getHeight() * scaleFactor);
-		if (scaleFactor == 1.0){
-			return prevImg;
-		}
-		BufferedImage nextImg = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB);
-		for (int y = 0; y < scaledHeight; y++) {
-			for (int x = 0; x < scaledWidth; x++) {
-				int scaledPixel = prevImg.getRGB((int) (x/scaleFactor), (int) (y/scaleFactor));
-				nextImg.setRGB(x, y, scaledPixel);
+	private BufferedImage scaleImageAnimate(BufferedImage prevImage, double scaleFactor) {
+		int Width = prevImage.getWidth();
+		int Height = prevImage.getHeight();
+		double origin= Width/2.0;
+		BufferedImage newImage = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB);
+
+		for (int y = 0; y < Height; y++) {
+			for (int x = 0; x < Width; x++) {
+				double x_origin = x - origin;
+				double y_origin = y - origin;
+				double x_transformed = x_origin/scaleFactor;
+				double y_transformed = y_origin/scaleFactor;
+				int x_new = (int) (x_transformed + origin);
+				int y_new = (int) (y_transformed + origin);
+				if (x_new < 0 || y_new < 0 || x_new >= Width|| y_new >= Height) {
+					newImage.setRGB(x, y, util.hex2Decimal("000000"));
+				}
+				else {
+					newImage.setRGB(x, y, prevImage.getRGB(x_new, y_new));
+				}
 			}
 		}
-		return nextImg;
+		return newImage;
 	}
 
 	/**
@@ -94,35 +96,33 @@ public class ImageDisplay {
 		}
 
 		//define image properties
-		int imgWidth = prevImage.getWidth();
-		int imgHeight = prevImage.getHeight();
-		int diagWidth = (int) (Math.sqrt(2) * imgWidth);
-		int diagHeight = (int) (Math.sqrt(2) * imgHeight);
-		double origin = imgWidth/2.0;
-		double diagOrigin = diagWidth/2.0;
+		int Width = prevImage.getWidth();
+		int Height = prevImage.getHeight();
+		double origin = Width/2.0;
 
-		BufferedImage rotatedImg = new BufferedImage(
-				diagWidth,
-				diagHeight,
+		BufferedImage rotatedImage = new BufferedImage(
+				Width,
+				Height,
 				BufferedImage.TYPE_INT_RGB
 		);
-		for (int y = 0; y < diagHeight; y++) {
-			for (int x = 0; x < diagWidth; x++) {
-				double x_origin = x - diagOrigin;
-				double y_origin = y - diagOrigin;
+
+		for (int y = 0; y < Height; y++) {
+			for (int x = 0; x < Width; x++) {
+				double x_origin = x - origin;
+				double y_origin = y - origin;
 				double x_transformed = Math.cos(rotation) * x_origin - Math.sin(rotation) * y_origin;
 				double y_transformed = Math.sin(rotation) * x_origin + Math.cos(rotation) * y_origin;
 				int x_new = (int) (x_transformed + origin);
 				int y_new = (int) (y_transformed + origin);
-				if (x_new < 0 || y_new < 0 || x_new >= imgWidth || y_new >= imgHeight) {
-					rotatedImg.setRGB(x, y, util.hex2Decimal("D0D0D0"));
+				if (x_new < 0 || y_new < 0 || x_new >= Width|| y_new >= Height) {
+					rotatedImage.setRGB(x, y, util.hex2Decimal("000000"));
 				}
 				else {
-					rotatedImg.setRGB(x, y, prevImage.getRGB(x_new, y_new));
+					rotatedImage.setRGB(x, y, prevImage.getRGB(x_new, y_new));
 				}
 			}
 		}
-		return rotatedImg;
+		return rotatedImage;
 	}
 
 	/**
@@ -178,12 +178,12 @@ public class ImageDisplay {
 		BufferedImage[] imageFrames = new BufferedImage[numFrames];
 
 		prevImage = aliasFlag == 1 ? antiAlias(prevImage, 1) : prevImage;
-		scaleFactor = 1/scaleFactor;
 
 		for (int i = 0; i < numFrames; i++) {
-			double val = (double) (i * 1.2)/ ((double) (numFrames - 1));
-			val = val == 0.0 ? (val + 0.01) : val;
-			imageFrames[i] = scaleImage(rotateImage(prevImage,(double) (i * rotation)/ ((double) (numFrames-1))),val);
+			double scale_i = (double) (i * scaleFactor)/ ((double) (numFrames - 1));
+			double angle_i = (double) (i * rotation)/ ((double) (numFrames-1));
+			scale_i = scale_i == 0.0 ? (scale_i + 0.01) : scale_i;
+			imageFrames[i] = rotateImage(scaleImageAnimate(prevImage,scale_i), angle_i);
 		}
 		return imageFrames;
 	}
@@ -202,7 +202,7 @@ public class ImageDisplay {
 
 		if (fps == 0 || transition == 0) {
 			imgOne = antiAlias(imgOne, aliasFlag);
-			imgOne = scaleImage(imgOne, scaleFactor);
+			imgOne = scaleImageAnimate(imgOne, scaleFactor);
 			imgOne = rotateImage(imgOne, rotation);
 			util.showImsHelper(imgOne);
 		} else {
@@ -216,7 +216,7 @@ public class ImageDisplay {
 			for (int i = 0; i < numFrames; i++) {
 				util.showAnimationHelper(animationFrame, lbIm2, imageFrames[i]);
 				try{
-					Thread.sleep((int) (500.00/fps));
+					Thread.sleep((int) (1000.00/fps));
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
@@ -224,7 +224,7 @@ public class ImageDisplay {
 		}
 	}
 
-	/////////////       MAIN
+	/////////////       MAIN        ///////////////
 	public static void main(String[] args) {
 		ImageDisplay ren = new ImageDisplay();
 		ren.showIms(args);
