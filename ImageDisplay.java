@@ -108,8 +108,8 @@ public class ImageDisplay {
 
 		for (int y = 0; y < Height; y++) {
 			for (int x = 0; x < Width; x++) {
-				double x_origin = x - origin;
-				double y_origin = y - origin;
+				double x_origin = x - 512/2.0;
+				double y_origin = y - 512/2.0;
 				double x_transformed = Math.cos(rotation) * x_origin - Math.sin(rotation) * y_origin;
 				double y_transformed = Math.sin(rotation) * x_origin + Math.cos(rotation) * y_origin;
 				int x_new = (int) (x_transformed + origin);
@@ -218,7 +218,7 @@ public class ImageDisplay {
 			for (int i = 0; i < numFrames; i++) {
 				util.showAnimationHelper(animationFrame, lbIm2, imageFrames[i]);
 				try{
-					Thread.sleep((int) (500.00/fps));
+					Thread.sleep((int) (1000.00/fps));
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
